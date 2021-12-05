@@ -20,6 +20,8 @@ import {
   restore,
   scopeBind,
   EventPayload,
+  EffectParams,
+  StoreValue,
 } from "effector";
 import { klona } from "klona/json";
 import {
@@ -187,6 +189,8 @@ const teamBConf = {
 } as const;
 export const teamBMoveFx = attach(teamBConf);
 
+export type GameState = StoreValue<typeof teamBConf.source>;
+
 // game
 export const tick = createEvent();
 
@@ -344,8 +348,10 @@ const teamBDead = guard({
   }
 })
 
+const $interval = createStore(1, {sid: "tick-interval"});
+
 const int = interval({
-  timeout: 1,
+  timeout: $interval,
   start: startGameFx.map(() => {}),
   stop: stopGame,
 })
@@ -378,6 +384,7 @@ export const GameModel = {
   teamAMoveFx,
   teamBMoveFx,
   $maxSteps,
+  $interval,
 };
 
 export const ViewModel = {
@@ -392,5 +399,6 @@ export const ViewModel = {
   teamADead,
   teamBDead,
   maxStepsHit,
-  stopGame
+  stopGame,
+  $interval,
 }
