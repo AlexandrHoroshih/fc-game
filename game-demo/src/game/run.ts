@@ -69,7 +69,7 @@ export const createGame = (config: { size: GameSize; interval: number }) => {
   });
 
   const runGame = async () => {
-      await allSettled(GameModel.startGameFx, {scope})
+      await allSettled(GameModel.startGameFx, {scope, params: `${Math.random()}`})
   }
 
   return {

@@ -28,6 +28,7 @@ import {
   isOutOfBounds,
 } from "./lib";
 import { interval } from "./interval";
+import { abort }  from "../abort";
 
 export const $gameSize = createStore<GameSize>(
   {
@@ -195,15 +196,26 @@ const $currentMove = createStore<"a" | "b">("a").on(tick, (curr) =>
 // attacker
 // game state
 export const stopGame = createEvent();
-const setGameDef = createEvent<any>();
-const $gameDef = restore(setGameDef, null);
-export const startGameFx = createEffect(async () => {
-  const def = createDefer();
-  setGameDef(def);
-  await runDeferFx(def);
-});
+const stopGameInternal = createEvent<string>()
+export const startGameFx = abort({
+  handler: (params: string, {onAbort}) => {
+    const game = new Promise((r) => {
+      onAbort(() => {
+        r(params);
+      })
+    })
 
-$gameDef.watch(stopGame, (d) => d?.rs());
+    return game;
+  },
+  getKey: (id: string) => id,
+  signal: stopGameInternal,
+})
+const $gameId = restore(startGameFx.map(v => v), null);
+sample({
+  source: $gameId,
+  clock: stopGame,
+  target: stopGameInternal,
+})
 
 split({
   source: $currentMove,
