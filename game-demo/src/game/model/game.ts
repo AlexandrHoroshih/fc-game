@@ -301,11 +301,11 @@ split({
     a: [teamAApi.damage.prepend<EventPayload<typeof shotHit>>((shot) => [
       shot.target.id,
       25,
-    ]), teamAApi.move.prepend],
-    b: teamBApi.damage.prepend<EventPayload<typeof shotHit>>((shot) => [
+    ]), teamAApi.move.prepend<EventPayload<typeof shotHit>>(shot => [shot.target.id, shot.dir])],
+    b: [teamBApi.damage.prepend<EventPayload<typeof shotHit>>((shot) => [
       shot.target.id,
       25,
-    ]),
+    ]), teamBApi.move.prepend<EventPayload<typeof shotHit>>(shot => [shot.target.id, shot.dir])],
   }
 })
 
