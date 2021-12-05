@@ -20,15 +20,18 @@ export type Dir = typeof dir[number];
 export type Move = {
   type: "move";
   dir: Dir;
+  id: Id;
 };
 
 export type Rotate = {
   type: "rotate";
   dir: Dir;
+  id: Id;
 };
 
 export type Shoot = {
   type: "shoot";
+  id: Id;
 };
 
 export type Nothing = {

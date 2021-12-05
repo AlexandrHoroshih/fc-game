@@ -5,7 +5,8 @@ const teamA = (game: GameState): Action => {
 
     return {
         type: "move",
-        dir: "n"
+        dir: "n",
+        id: "Aooba",
     }
 }
 
