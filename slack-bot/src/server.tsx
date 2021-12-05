@@ -1,12 +1,62 @@
 import {App} from "@slack/bolt";
 import axios from "axios";
-import { setUser } from "./db";
+import { setUser, setBotInstall, readBotInstall, deleteBotInstall } from "./db";
 
 const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 const app = new App({
-  token: process.env.SLACK_BOT_TOKEN,
   signingSecret: process.env.SLACK_SIGNING_SECRET,
+  clientId: process.env.SLACK_CLIENT_ID,
+  clientSecret: process.env.SLACK_CLIENT_SECRET,
+  stateSecret: 'my-secret',
   port,
+  scopes: ['commands'],
+  installerOptions: {
+    stateVerification: false,
+  },
+  installationStore: {
+    storeInstallation: async (installation) => {
+      // change the lines below so they save to your database
+      if (installation.isEnterpriseInstall && installation.enterprise !== undefined) {
+        // support for org-wide app installation
+        const inst = JSON.stringify(installation);
+        return await setBotInstall({ id: installation.enterprise.id, installation: inst });
+      }
+      if (installation.team !== undefined) {
+        // single team app installation
+        const inst = JSON.stringify(installation);
+        return await setBotInstall({ id: installation.team.id, installation: inst });
+      }
+      throw new Error('Failed saving installation data to installationStore');
+    },
+    fetchInstallation: async (installQuery) => {
+      // change the lines below so they fetch from your database
+      if (installQuery.isEnterpriseInstall && installQuery.enterpriseId !== undefined) {
+        // org wide app installation lookup
+        const json = await readBotInstall({id: installQuery.enterpriseId});
+
+        return JSON.parse(json);
+      }
+      if (installQuery.teamId !== undefined) {
+        // single team app installation lookup
+        const json = await readBotInstall({id: installQuery.teamId});
+
+        return JSON.parse(json)
+      }
+      throw new Error('Failed fetching installation');
+    },
+    deleteInstallation: async (installQuery) => {
+      // change the lines below so they delete from your database
+      if (installQuery.isEnterpriseInstall && installQuery.enterpriseId !== undefined) {
+        // org wide app installation deletion
+        return await deleteBotInstall({id: installQuery.enterpriseId});
+      }
+      if (installQuery.teamId !== undefined) {
+        // single team app installation deletion
+        return await deleteBotInstall({id: installQuery.teamId});
+      }
+      throw new Error('Failed to delete installation');
+    },
+  },
 });
 
 app.command('/setbot',  async ({ command, ack, respond }) => {

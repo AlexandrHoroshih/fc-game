@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, set, child, get } from "firebase/database";
+import { getDatabase, ref, set, child, get, remove } from "firebase/database";
 
 const firebaseConfig = {
     apiKey: process.env.FB_API_KEY,
@@ -49,6 +49,31 @@ export const setUser = async (config: { userId: string; name: string; code: stri
     
     return result;
 }
+
+export const setBotInstall = async (config: { id: string; installation: string; }) => {
+    const result = await set(ref(database, 'bots/' + config.id), config.installation);
+     
+     return result;
+ }
+
+export const readBotInstall = async (config: {id: string}) => {
+    const dbRef = ref(database);
+    const snapshot = await get(child(dbRef, `bots/${config.id}`))
+
+    if (!snapshot.exists()) {
+        throw new Error(config.id + " not found")
+    }
+
+    return snapshot.val();
+}
+
+export const deleteBotInstall = async (config: {id: string}) => {
+    const result = await remove(ref(database, 'bots/' + config.id));
+
+    return result;
+}
+
+
 
 
 
