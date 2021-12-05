@@ -72,5 +72,8 @@ export const createGame = (config: { size: GameSize; interval: number }) => {
       await allSettled(GameModel.startGameFx, {scope})
   }
 
-  return runGame
+  return {
+      run: runGame,
+      scope,
+    }
 };
