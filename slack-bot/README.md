@@ -1,21 +1,22 @@
-# Razzle TypeScript Example
+# Бот для js-игры
 
-## How to use
+## Запуск
 
-<!-- START install generated instructions please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN yarn update-examples TO UPDATE -->Create and start the example:
-
-```bash
-npx create-razzle-app --example with-typescript with-typescript
-
-cd with-typescript
-yarn start
+Нужные env-переменные:
 ```
-<!-- END install generated instructions please keep comment here to allow auto update -->
-
-## Idea behind the example
-This is an of how to use Razzle with [TypeScript](https://github.com/Microsoft/TypeScript).
-
-Basic razzle will uses Babel to transform TypeScript to plain JavaScript ( with babel-loader ), and uses TypeScript for type-checking.
-
-Razzle knows how to resolve `.ts` and `.tsx` files out of the box.
+PORT=
+// Slack Apps -> Basic Information
+SLACK_SIGNING_SECRET=
+SLACK_CLIENT_ID=
+SLACK_CLIENT_SECRET=
+// Firebase Web App config
+FB_API_KEY=
+FB_AUTH_DOMAIN=
+FB_RD=
+FB_ID=
+FB_STORAGE_BUCKET=
+FB_SENDER_ID=
+FB_APP_ID=
+```
+Бот поддерживает команды `/setbot` и `/gamehelp` - они же должны быть поддержаны и в настройках Slack App
+Чтобы бота можно было устанавливать, в настройках приложения должен быть указан `https://<url деплоя>/slack/oauth_redirect` - OAuth Redirect url
