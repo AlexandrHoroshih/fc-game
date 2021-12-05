@@ -2,7 +2,7 @@ import React, {MutableRefObject} from 'react';
 import {Provider, useEvent, useStore} from 'effector-react/scope'
 import * as PIXI from 'pixi.js'
 import {createGame} from './game/run'
-import {GameModel} from './game/model/game'
+import {ViewModel as GameModel} from './game/model/game'
 
 // @ts-ignore
 import shooterUrl from './assets/shooter.png'
@@ -45,7 +45,6 @@ function useApplication(nodeRef: MutableRefObject<HTMLElement>) {
   const shooterTextureRef = React.useRef<PIXI.Texture>(null)
 
   React.useEffect(() => {
-    console.log("game initialization")
     let app = new PIXI.Application({
       width: window.innerWidth,
       height: window.innerHeight,

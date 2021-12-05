@@ -64,13 +64,15 @@ export const $teamA = createStore<Record<Id, Bot>>(
   { sid: "teamA" }
 );
 const teamABaseApi = createApi($teamA, {
-  damage: (kv, hit: [id: Id, amount: number]) => {
+  damage: (kv, hit: [id: Id, amount: number]) => 
+  {
     const [id, amount] = hit;
     const next = klona(kv);
     next[id].health = takeHealth(next[id].health, amount);
     return next;
   },
   rotate: (kv, rot: [id: Id, dir: Dir]) => {
+    if (!kv[rot[0]].health) return;
     const [id, dir] = rot;
     const next = klona(kv);
     next[id].viewDir = getDir(dir);
@@ -82,6 +84,7 @@ sample({
   source: [$gameSize, $teamA],
   clock: moveA,
   fn: ([size, kv], [id, dir]) => {
+    if (!kv[id].health) return;
     const realDir = getDir(dir);
     const next = klona(kv);
     const pos = getPos(size, next[id].position, realDir);
@@ -122,6 +125,7 @@ const teamBBaseApi = createApi($teamB, {
     return next;
   },
   rotate: (kv, rot: [id: Id, dir: Dir]) => {
+    if (!kv[rot[0]].health) return;
     const [id, dir] = rot;
     const next = klona(kv);
     next[id].viewDir = getDir(dir);
@@ -133,6 +137,7 @@ sample({
   source: [$gameSize, $teamB],
   clock: moveB,
   fn: ([size, kv], [id, dir]) => {
+    if (!kv[id].health) return;
     const realDir = getDir(dir);
     const next = klona(kv);
     const pos = getPos(size, next[id].position, realDir);
@@ -210,7 +215,7 @@ export const startGameFx = abort({
   handler: (params: string, { onAbort }) => {
     const game = new Promise((r) => {
       onAbort(() => {
-        r(params);
+        setTimeout(() => r(params), 0);
       });
     });
 
@@ -475,11 +480,6 @@ const maxStepsHit = guard({
   filter: ([it, max]) => it === max,
 });
 
-sample({
-  clock: [teamADead, teamBDead, maxStepsHit],
-  target: stopGame,
-});
-
 // moves log
 const $log = createStore([]).on(
   [
@@ -493,6 +493,7 @@ const $log = createStore([]).on(
 
 // human log
 const gameEvent = sample({
+  greedy: true,
   source: $iteration,
   clock: [
     teamAMoveFx.doneData.map(
@@ -514,6 +515,11 @@ const gameEvent = sample({
 
 gameEvent.watch(console.log);
 
+sample({
+  clock: [teamADead, teamBDead, maxStepsHit],
+  target: stopGame,
+});
+
 export const GameModel = {
   $gameSize,
   startGameFx,
@@ -529,17 +535,33 @@ export const GameModel = {
 
 export const ViewModel = {
   $gameSize,
-  tick,
-  $teamA,
-  $teamB,
-  teamAApi,
-  teamBApi,
-  shotHit,
-  handHit,
-  teamADead,
-  teamBDead,
-  maxStepsHit,
+  startGameFx,
   stopGame,
+  tick,
+  $teamA: $teamA.map(kv => {
+    const next: typeof kv = {};
+
+    Object.entries(kv).forEach(([id, bot]) => {
+      if (bot.health > 0) {
+        next[id] = bot;
+      }
+    })
+
+    return kv;
+  }),
+  $teamB: $teamB.map(kv => {
+    const next: typeof kv = {};
+
+    Object.entries(kv).forEach(([id, bot]) => {
+      if (bot.health > 0) {
+        next[id] = bot;
+      }
+    })
+
+    return kv;
+  }),
+  teamAMoveFx,
+  teamBMoveFx,
+  $maxSteps,
   $interval,
-  fellOut,
 };
