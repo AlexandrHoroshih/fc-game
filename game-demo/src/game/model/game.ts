@@ -314,7 +314,6 @@ const handFired = sample({
   source: {a: $teamAMeta, b: $teamBMeta},
   clock: [teamAApi.move.map(m => ({...m, team: "a"})), teamBApi.move.map(m => ({...m, team: "b"}))],
   fn: (teams, move) => {
-    const mover
     const listA: BotTeam[] = Object.values(teams.a).map(bot => ({...bot, team: "a"}))
     const listB: BotTeam[] = Object.values(teams.b).map(bot => ({...bot, team: "b"}))
     const list: BotTeam[] = [...listA, ...listB];
