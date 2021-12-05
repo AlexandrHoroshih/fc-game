@@ -1,4 +1,13 @@
-import type { Bot, Id, Action, GameSize, Dir, Move, Rotate, Stash } from "./types";
+import type {
+  Bot,
+  Id,
+  Action,
+  GameSize,
+  Dir,
+  Move,
+  Rotate,
+  Stash,
+} from "./types";
 import {
   createEvent,
   createStore,
@@ -28,7 +37,7 @@ import {
   isOutOfBounds,
 } from "./lib";
 import { interval } from "./interval";
-import { abort }  from "../abort";
+import { abort } from "../abort";
 
 export const $gameSize = createStore<GameSize>(
   {
@@ -196,26 +205,29 @@ const $currentMove = createStore<"a" | "b">("a").on(tick, (curr) =>
 // attacker
 // game state
 export const stopGame = createEvent();
-const stopGameInternal = createEvent<string>()
+const stopGameInternal = createEvent<string>();
 export const startGameFx = abort({
-  handler: (params: string, {onAbort}) => {
+  handler: (params: string, { onAbort }) => {
     const game = new Promise((r) => {
       onAbort(() => {
         r(params);
-      })
-    })
+      });
+    });
 
     return game;
   },
   getKey: (id: string) => id,
   signal: stopGameInternal,
-})
-const $gameId = restore(startGameFx.map(v => v), null);
+});
+const $gameId = restore(
+  startGameFx.map((v) => v),
+  null
+);
 sample({
   source: $gameId,
   clock: stopGame,
   target: stopGameInternal,
-})
+});
 
 split({
   source: $currentMove,
@@ -290,7 +302,7 @@ const shotFired = sample({
       }
     }
 
-    return target ? { target, dir: shooter.viewDir } : null;
+    return target ? { target, dir: shooter.viewDir, by: shooter } : null;
   },
 });
 const shotHit = guard({
@@ -321,7 +333,7 @@ const handFired = sample({
       }
     }
 
-    return target ? { target, dir: mover.viewDir } : null;
+    return target ? { target, dir: mover.viewDir, by: mover } : null;
   },
 });
 
@@ -373,7 +385,11 @@ const fellOut = guard({
     fn: (data, move) => {
       const mover = data[move.team as "a" | "b"][move.id];
 
-      return { fallen: isOutOfBounds(mover.position, data.size), mover, team: move.team };
+      return {
+        fallen: isOutOfBounds(mover.position, data.size),
+        mover,
+        team: move.team,
+      };
     },
   }),
   filter: (outMove) => outMove.fallen,
@@ -386,9 +402,37 @@ split({
     b: (outMove) => outMove.team === "b",
   },
   cases: {
-    a: teamAApi.damage.prepend<EventPayload<typeof fellOut>>(outMove => [outMove.mover.id, outMove.mover.health]),
-    b: teamBApi.damage.prepend<EventPayload<typeof fellOut>>(outMove => [outMove.mover.id, outMove.mover.health]),
+    a: teamAApi.damage.prepend<EventPayload<typeof fellOut>>((outMove) => [
+      outMove.mover.id,
+      outMove.mover.health,
+    ]),
+    b: teamBApi.damage.prepend<EventPayload<typeof fellOut>>((outMove) => [
+      outMove.mover.id,
+      outMove.mover.health,
+    ]),
   },
+});
+
+const botDamaged = sample({
+  source: { a: $teamA, b: $teamB },
+  clock: [
+    teamAApi.damage.map((d) => ({ id: d[0], team: "a" })),
+    teamBApi.damage.map((d) => ({ id: d[0], team: "b" })),
+  ],
+  fn: (teams, damage) => {
+    const damaged = teams[damage.team as "a" | "b"][damage.id];
+
+    return {
+      isDead: damaged.health === 0,
+      damaged,
+      team: damage.team,
+    };
+  },
+});
+
+const botDead = guard({
+  clock: botDamaged,
+  filter: (d) => d.isDead,
 });
 
 // results
@@ -435,6 +479,40 @@ sample({
   clock: [teamADead, teamBDead, maxStepsHit],
   target: stopGame,
 });
+
+// moves log
+const $log = createStore([]).on(
+  [
+    teamAMoveFx.doneData.map((act) => ({ ...act, team: "a" })),
+    teamBMoveFx.doneData.map((act) => ({ ...act, team: "b" })),
+  ],
+  (log, action) => {
+    return [...log, action];
+  }
+);
+
+// human log
+const gameEvent = sample({
+  source: $iteration,
+  clock: [
+    teamAMoveFx.doneData.map(
+      (act) => `${act.id} from team A decided to do "${act.type}"`
+    ),
+    teamBMoveFx.doneData.map(
+      (act) => `${act.id} from team A decided to do "${act.type}"`
+    ),
+    maxStepsHit.map(() => "Game over by steps"),
+    teamADead.map(() => "Team B won!"),
+    teamBDead.map(() => "Team A won!"),
+    fellOut.map((out) => `${out.mover.id} fallen from the edge`),
+    handHit.map((hit) => `${hit.target.id} was hit by hand of ${hit.by.id}`),
+    shotHit.map((hit) => `${hit.target.id} was shot by ${hit.by.id}`),
+    botDead.map((d) => `${d.damaged.id} from team "${d.team}" is no more`),
+  ],
+  fn: (tick, message) => ({ message, tick }),
+});
+
+gameEvent.watch(console.log);
 
 export const GameModel = {
   $gameSize,
