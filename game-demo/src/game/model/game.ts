@@ -1,4 +1,4 @@
-import type { Bot, Id, Action, GameSize, Dir, Move, Rotate } from "./types";
+import type { Bot, Id, Action, GameSize, Dir, Move, Rotate, Stash } from "./types";
 import {
   createEvent,
   createStore,
@@ -156,7 +156,7 @@ const teamAConf = {
   source: combine({
     myBots: $teamAMeta,
     enemyBots: $teamBMeta,
-    stash: {},
+    stash: {} as Stash,
   }),
   effect: (meta): { id: Id } & Action => {
     return {
@@ -172,7 +172,7 @@ const teamBConf = {
   source: combine({
     myBots: $teamBMeta,
     enemyBots: $teamAMeta,
-    stash: {},
+    stash: {} as Stash,
   }),
   effect: (meta): { id: Id } & Action => {
     return {

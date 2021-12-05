@@ -39,3 +39,5 @@ export type Nothing = {
 };
 
 export type Action = Move | Rotate | Shoot | Nothing | undefined;
+
+export type Stash = Record<string, any>;
