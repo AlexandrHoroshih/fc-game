@@ -71,19 +71,6 @@ export const getPos = (size: GameSize, pos: Position, dir: Dir) => {
     }
   }
 
-  if (result.x < 0) {
-    result.x = 0;
-  }
-  if (result.x > size.w) {
-    result.x = size.w;
-  }
-  if (result.y < 0) {
-    result.y = 0;
-  }
-  if (result.y > size.h) {
-    result.y = size.h;
-  }
-
   return result;
 };
 
@@ -159,4 +146,23 @@ export const inGunRange = (shooter: Position, dir: Dir, target: Position) => {
 
   return { inRange, range };
 };
+
+export const isOutOfBounds = (pos: Position, size: GameSize) => {
+  const result = pos;
+
+  if (result.x < 0) {
+    return true;
+  }
+  if (result.x > size.w) {
+    return true;
+  }
+  if (result.y < 0) {
+    return true;
+  }
+  if (result.y > size.h) {
+    return true;
+  }
+
+  return false;
+}
 

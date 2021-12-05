@@ -1,12 +1,4 @@
-import type {
-  Bot,
-  Id,
-  Action,
-  GameSize,
-  Dir,
-  Move,
-  Rotate,
-} from "./types";
+import type { Bot, Id, Action, GameSize, Dir, Move, Rotate } from "./types";
 import {
   createEvent,
   createStore,
@@ -22,6 +14,7 @@ import {
   EventPayload,
   EffectParams,
   StoreValue,
+  merge,
 } from "effector";
 import { klona } from "klona/json";
 import {
@@ -32,6 +25,7 @@ import {
   getPos,
   isPosEqual,
   inGunRange,
+  isOutOfBounds,
 } from "./lib";
 import { interval } from "./interval";
 
@@ -91,7 +85,7 @@ sample({
 const teamAApi = {
   ...teamABaseApi,
   move: moveA,
-  shoot: createEvent<Id>()
+  shoot: createEvent<Id>(),
 };
 
 // TEAM B
@@ -142,7 +136,7 @@ sample({
 const teamBApi = {
   ...teamBBaseApi,
   move: moveB,
-  shoot: createEvent<Id>()
+  shoot: createEvent<Id>(),
 };
 
 const $teamAMeta = $teamA.map((kv) =>
@@ -194,9 +188,8 @@ export type GameState = StoreValue<typeof teamBConf.source>;
 // game
 export const tick = createEvent();
 
-const $currentMove = createStore<"a" | "b">("a").on(
-  tick,
-  (curr) => (curr === "a" ? "b" : "a")
+const $currentMove = createStore<"a" | "b">("a").on(tick, (curr) =>
+  curr === "a" ? "b" : "a"
 );
 
 // attacker
@@ -229,15 +222,12 @@ split({
     shoot: (act) => Boolean(act && act.type === "shoot"),
   },
   cases: {
-    move: teamAApi.move.prepend<{ id: Id } & Move>(({ id, dir }) => [
-      id,
-      dir,
-    ]),
+    move: teamAApi.move.prepend<{ id: Id } & Move>(({ id, dir }) => [id, dir]),
     rotate: teamAApi.rotate.prepend<{ id: Id } & Rotate>(({ id, dir }) => [
       id,
       dir,
     ]),
-    shoot: teamAApi.shoot.prepend<{id: Id}>(({id}) => id),
+    shoot: teamAApi.shoot.prepend<{ id: Id }>(({ id }) => id),
   },
 });
 
@@ -249,35 +239,40 @@ split({
     shoot: (act) => Boolean(act && act.type === "shoot"),
   },
   cases: {
-    move: teamBApi.move.prepend<{ id: Id } & Move>(({ id, dir }) => [
-      id,
-      dir,
-    ]),
+    move: teamBApi.move.prepend<{ id: Id } & Move>(({ id, dir }) => [id, dir]),
     rotate: teamBApi.rotate.prepend<{ id: Id } & Rotate>(({ id, dir }) => [
       id,
       dir,
     ]),
-    shoot: teamBApi.shoot.prepend<{id: Id}>(({id}) => id),
+    shoot: teamBApi.shoot.prepend<{ id: Id }>(({ id }) => id),
   },
 });
 
 // game events
-type BotTeam = Bot & {team: string};
+type BotTeam = Bot & { team: string };
 // shooting
 const shotFired = sample({
-  source: {a: $teamAMeta, b: $teamBMeta},
-  clock: [teamAApi.shoot.map(id => ({team: "A", id})), teamBApi.shoot.map(id => ({team: "A", id}))],
+  source: { aMeta: $teamAMeta, bMeta: $teamBMeta, a: $teamA, b: $teamB },
+  clock: [
+    teamAApi.shoot.map((id) => ({ team: "a", id })),
+    teamBApi.shoot.map((id) => ({ team: "b", id })),
+  ],
   fn: (teams, shot) => {
-    const shooter = teams[shot.team][shot.id];
-    const listA: BotTeam[] = Object.values(teams.a).map(bot => ({...bot, team: "a"}))
-    const listB: BotTeam[] = Object.values(teams.b).map(bot => ({...bot, team: "b"}))
+    const shooter = teams[shot.team as "a" | "b"][shot.id];
+    const listA: BotTeam[] = teams.aMeta.map((bot) => ({ ...bot, team: "a" }));
+    const listB: BotTeam[] = teams.bMeta.map((bot) => ({ ...bot, team: "b" }));
     const list: BotTeam[] = [...listA, ...listB];
-    let target: Bot & {team: string} | null = null;
+    let target: BotTeam | null = null;
     let range = 4;
 
     for (let i = 0; i < list.length; i++) {
       const current = list[i];
-      const gun = inGunRange(shooter.position, shooter.viewDir, current.position);
+      if (current.id === shooter.id) continue;
+      const gun = inGunRange(
+        shooter.position,
+        shooter.viewDir,
+        current.position
+      );
       if (gun.inRange && gun.range < range) {
         target = current;
       }
@@ -291,45 +286,98 @@ const shotHit = guard({
   filter: Boolean,
 });
 
+// hand damage
+const handFired = sample({
+  source: { aMeta: $teamAMeta, bMeta: $teamBMeta, a: $teamA, b: $teamB },
+  clock: [
+    teamAApi.move.map((m) => ({ id: m[0], dir: m[1], team: "a" })),
+    teamBApi.move.map((m) => ({ id: m[0], dir: m[1], team: "b" })),
+  ],
+  fn: (teams, move) => {
+    const mover = teams[move.team as "a" | "b"][move.id];
+    const listA: BotTeam[] = teams.aMeta.map((bot) => ({ ...bot, team: "a" }));
+    const listB: BotTeam[] = teams.bMeta.map((bot) => ({ ...bot, team: "b" }));
+    const list: BotTeam[] = [...listA, ...listB];
+    let target: BotTeam | null = null;
+
+    for (let i = 0; i < list.length; i++) {
+      const current = list[i];
+      if (current.id === mover.id) continue;
+      if (isPosEqual(mover.position, current.position)) {
+        target = current;
+        break;
+      }
+    }
+
+    return target ? { target, dir: mover.viewDir } : null;
+  },
+});
+
+const handHit = guard({
+  clock: handFired,
+  filter: Boolean,
+});
+
+const attacked = merge([handHit, shotHit]);
+
 split({
-  source: shotHit,
+  source: attacked,
   match: {
     a: (hit) => hit.target.team === "a",
     b: (hit) => hit.target.team === "b",
   },
   cases: {
-    a: [teamAApi.damage.prepend<EventPayload<typeof shotHit>>((shot) => [
-      shot.target.id,
-      25,
-    ]), teamAApi.move.prepend<EventPayload<typeof shotHit>>(shot => [shot.target.id, shot.dir])],
-    b: [teamBApi.damage.prepend<EventPayload<typeof shotHit>>((shot) => [
-      shot.target.id,
-      25,
-    ]), teamBApi.move.prepend<EventPayload<typeof shotHit>>(shot => [shot.target.id, shot.dir])],
-  }
-})
+    a: [
+      teamAApi.damage.prepend<EventPayload<typeof attacked>>((attack) => [
+        attack.target.id,
+        25,
+      ]),
+      teamAApi.move.prepend<EventPayload<typeof attacked>>((attack) => [
+        attack.target.id,
+        attack.dir,
+      ]),
+    ],
+    b: [
+      teamBApi.damage.prepend<EventPayload<typeof attacked>>((attack) => [
+        attack.target.id,
+        25,
+      ]),
+      teamBApi.move.prepend<EventPayload<typeof attacked>>((attack) => [
+        attack.target.id,
+        attack.dir,
+      ]),
+    ],
+  },
+});
 
-// hand damage
-const handFired = sample({
-  source: {a: $teamAMeta, b: $teamBMeta},
-  clock: [teamAApi.move.map(m => ({...m, team: "a"})), teamBApi.move.map(m => ({...m, team: "b"}))],
-  fn: (teams, move) => {
-    const listA: BotTeam[] = Object.values(teams.a).map(bot => ({...bot, team: "a"}))
-    const listB: BotTeam[] = Object.values(teams.b).map(bot => ({...bot, team: "b"}))
-    const list: BotTeam[] = [...listA, ...listB];
+// out of map
+const fellOut = guard({
+  clock: sample({
+    source: { size: $gameSize, a: $teamA, b: $teamB },
+    clock: [
+      teamAApi.move.map((m) => ({ id: m[0], dir: m[1], team: "a" })),
+      teamBApi.move.map((m) => ({ id: m[0], dir: m[1], team: "b" })),
+    ],
+    fn: (data, move) => {
+      const mover = data[move.team as "a" | "b"][move.id];
 
-    for (let i = 0; i < list.length; i++) {
+      return { fallen: isOutOfBounds(mover.position, data.size), mover, team: move.team };
+    },
+  }),
+  filter: (outMove) => outMove.fallen,
+});
 
-    }
-
-    return true;
-  }
-})
-
-const handHit = guard({
-  clock: handFired,
-  filter: () => false,
-})
+split({
+  source: fellOut,
+  match: {
+    a: (outMove) => outMove.team === "a",
+    b: (outMove) => outMove.team === "b",
+  },
+  cases: {
+    a: teamAApi.damage.prepend<EventPayload<typeof fellOut>>(outMove => [outMove.mover.id, outMove.mover.health]),
+    b: teamBApi.damage.prepend<EventPayload<typeof fellOut>>(outMove => [outMove.mover.id, outMove.mover.health]),
+  },
+});
 
 // results
 const teamADead = guard({
@@ -337,44 +385,44 @@ const teamADead = guard({
   filter: (kv) => {
     const list = Object.values(kv);
 
-    return list.every(a => a.health === 0)
-  }
-})
+    return list.every((a) => a.health === 0);
+  },
+});
 
 const teamBDead = guard({
   clock: $teamB,
   filter: (kv) => {
     const list = Object.values(kv);
 
-    return list.every(a => a.health === 0)
-  }
-})
+    return list.every((a) => a.health === 0);
+  },
+});
 
-const $interval = createStore(1, {sid: "tick-interval"});
+const $interval = createStore(1, { sid: "tick-interval" });
 
 const int = interval({
   timeout: $interval,
   start: startGameFx.map(() => {}),
   stop: stopGame,
-})
+});
 
 sample({
   clock: int.tick,
   target: tick,
-})
+});
 
-const $iteration = createStore(0).on(tick, s => s + 1)
-const $maxSteps = createStore(100)
+const $iteration = createStore(0).on(tick, (s) => s + 1);
+const $maxSteps = createStore(100);
 
 const maxStepsHit = guard({
   source: [$iteration, $maxSteps],
   filter: ([it, max]) => it === max,
-})
+});
 
 sample({
   clock: [teamADead, teamBDead, maxStepsHit],
   target: stopGame,
-})
+});
 
 export const GameModel = {
   $gameSize,
@@ -403,4 +451,5 @@ export const ViewModel = {
   maxStepsHit,
   stopGame,
   $interval,
-}
+  fellOut,
+};
