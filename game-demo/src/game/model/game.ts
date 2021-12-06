@@ -12,29 +12,25 @@ import {
   createEvent,
   createStore,
   attach,
-  createEffect,
   split,
   combine,
   sample,
   createApi,
   guard,
   restore,
-  scopeBind,
   EventPayload,
-  EffectParams,
   StoreValue,
   merge,
 } from "effector";
 import { klona } from "klona/json";
 import {
-  createDefer,
-  runDeferFx,
   takeHealth,
   getDir,
   getPos,
   isPosEqual,
   inGunRange,
   isOutOfBounds,
+  RANGE,
 } from "./lib";
 import { interval } from "./interval";
 import { abort } from "../abort";
@@ -198,7 +194,7 @@ const teamBConf = {
 } as const;
 export const teamBMoveFx = attach(teamBConf);
 
-export type GameState = StoreValue<typeof teamBConf.source>;
+export type GameStateBase = StoreValue<typeof teamBConf.source>;
 
 // game
 export const tick = createEvent();
@@ -292,7 +288,7 @@ const shotFired = sample({
     const listB: BotTeam[] = teams.bMeta.map((bot) => ({ ...bot, team: "b" }));
     const list: BotTeam[] = [...listA, ...listB];
     let target: BotTeam | null = null;
-    let range = 4;
+    let range = RANGE + 1;
 
     for (let i = 0; i < list.length; i++) {
       const current = list[i];
@@ -494,13 +490,13 @@ const $log = createStore([]).on(
 // human log
 const gameEvent = sample({
   greedy: true,
-  source: $iteration,
+  source: [$iteration, $teamAMeta, $teamBMeta],
   clock: [
     teamAMoveFx.doneData.map(
-      (act) => `${act.id} from team A decided to do "${act.type}"`
+      (act) => `${act.id} from team A decided to ${act.type}${act.dir ? ` in "${act.dir}" direction` : ""}`
     ),
     teamBMoveFx.doneData.map(
-      (act) => `${act.id} from team A decided to do "${act.type}"`
+      (act) => `${act.id} from team B decided to ${act.type}${act.dir ? ` in "${act.dir}" direction` : ""}`
     ),
     maxStepsHit.map(() => "Game over by steps"),
     teamADead.map(() => "Team B won!"),
@@ -508,9 +504,9 @@ const gameEvent = sample({
     fellOut.map((out) => `${out.mover.id} fallen from the edge`),
     handHit.map((hit) => `${hit.target.id} was hit by hand of ${hit.by.id}`),
     shotHit.map((hit) => `${hit.target.id} was shot by ${hit.by.id}`),
-    botDead.map((d) => `${d.damaged.id} from team "${d.team}" is no more`),
+    botDead.map((d) => `${d.damaged.id} from team ${d.team.toUpperCase()} is no more`),
   ],
-  fn: (tick, message) => ({ message, tick }),
+  fn: ([tick, A, B], message) => ({ message, tick, A, B }),
 });
 
 gameEvent.watch(console.log);

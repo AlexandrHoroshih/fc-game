@@ -32,12 +32,30 @@ export type Rotate = {
 export type Shoot = {
   type: "shoot";
   id: Id;
+  dir?: undefined;
 };
 
 export type Nothing = {
   type: "nothing";
+  dir?: Dir;
+  id: Id;
 };
 
 export type Action = Move | Rotate | Shoot | Nothing | undefined;
 
 export type Stash = Record<string, any>;
+
+export type GameState = {
+  myBots: Bot[];
+  enemyBots: Bot[];
+  stash: Stash;
+  lib: {
+    getDir: (me: Bot, target: Bot) => Dir;
+    inGunRange: (me: Bot, target: Bot) => boolean;
+    getDistance: (me: Bot, target: Bot) => number;
+    findClosest: (me: Bot, targets: Bot[]) => Bot;
+  };
+  meta: {
+    field: GameSize;
+  }
+}

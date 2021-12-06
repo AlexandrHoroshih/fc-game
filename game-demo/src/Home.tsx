@@ -23,7 +23,7 @@ function Game() {
 }
 
 function Home() {
-  const [scope, setScope] = React.useState(() => createGame({size: {w: 10, h: 10}, interval: 1000}).scope)
+  const [scope, setScope] = React.useState(() => createGame({size: {w: 10, h: 10}, interval: 100}).scope)
   return (
     <Provider value={scope}>
       <Game/>
@@ -76,7 +76,6 @@ function useApplication(nodeRef: MutableRefObject<HTMLElement>) {
   }, [])
 
   React.useEffect(() => {
-    console.log("team update", teamA, teamB)
     // TODO: move to the upper scope, to save cache between updates
     let localA: Record<string, Unit> = {}
     let localB: Record<string, Unit> = {}

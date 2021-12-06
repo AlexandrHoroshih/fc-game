@@ -1,22 +1,5 @@
-import { createEffect } from "effector";
 import { dir } from "./types";
 import type { Dir, Position, GameSize } from "./types";
-
-export const createDefer = <T>() => {
-  const defer = {};
-
-  // @ts-ignore
-  defer.req = new Promise((rs) => ((defer as any).rs = rs));
-
-  return defer as {
-    req: Promise<T>;
-    rs: () => void;
-  };
-};
-
-export const runDeferFx = createEffect(
-  async (def: ReturnType<typeof createDefer>) => await def.req
-);
 
 export const takeHealth = (current: number, hit: number) => {
   const next = current - hit;
@@ -78,7 +61,7 @@ export const isPosEqual = (left: Position, right: Position) => {
   return left.x === right.x && left.y === right.y;
 };
 
-const RANGE = 3;
+export const RANGE = 3;
 
 const getAim = (base: Position, dir: Dir, aim: number) => {
   if (dir === "n") {
