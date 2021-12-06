@@ -7,14 +7,18 @@
     "start": "concurrently \"yarn start:tsc\" \"razzle start\"",
     "build": "tsc -b && razzle build",
     "test": "razzle test --env=jsdom",
-    "start:prod": "NODE_ENV=production node build/server.js"
+    "start:prod": "NODE_ENV=production node build/server.js",
+    "game": "ts-node -T src/index.ts"
   },
   "dependencies": {
+    "dotenv": "^10.0.0",
+    "effector": "^22.1.2",
     "express": "^4.17.1",
     "firebase": "^9.6.0",
     "isolated-vm": "^4.3.6",
     "nanoid": "^3.1.30",
-    "node-gyp": "^8.4.1"
+    "node-gyp": "^8.4.1",
+    "ts-node": "^10.4.0"
   },
   "devDependencies": {
     "@testing-library/dom": "^7.29.4",
