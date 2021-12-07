@@ -25,6 +25,8 @@ const safeGame = async (config: {A: [string, User]; B: [string, User];}) => {
     const playerAId = config.A[0];
     const playerB = config.B[1].name;
     const playerBId = config.B[0];
+    safeA.dispose()
+    safeB.dispose()
 
     return {
         gameId: nanoid(),
