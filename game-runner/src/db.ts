@@ -31,8 +31,14 @@ type Game = {
     startedAt: string;
     log: string;
     winner: string;
-    playerA: string;
-    playerB: string;
+    a: {
+        id: string;
+        name: string;
+    }
+    b: {
+        id: string;
+        name: string;
+    }
 }
 
 const database = getDatabase(app);
@@ -65,6 +71,10 @@ export const saveGame = async (config: Game) => {
     
     return result;
 };
+
+export const saveStats = async (config: {day: number; stats: Record<string, {name: string; wins: number; loss: number; tie: number;}>}) => {
+    await set(ref(database, 'stats/' + config.day), config.stats);
+}
 
 export const getUsers = async () => {
     const result = await get(ref(database, 'users/'));
