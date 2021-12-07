@@ -6,7 +6,8 @@ import {
     createStore,
     guard,
     sample,
-    is
+    is,
+    attach
   } from "effector";
   
   function toStoreNumber(value: number | Store<number> | unknown): Store<number> {
@@ -39,17 +40,22 @@ import {
   
     const $notRunning = $isRunning.map((running) => !running);
   
-    let timeoutId: NodeJS.Timeout;
+    const save = createEvent<NodeJS.Timeout>();
+    const $timeoutId = createStore<NodeJS.Timeout | null>(null).on(save, (_, t) => t)
   
-    const timeoutFx = createEffect<number, void>((timeout) => {
-      return new Promise((resolve) => {
-        timeoutId = setTimeout(resolve, timeout);
+    const timeoutFx = createEffect<number, void>({ handler: (timeout) => {
+      return new Promise((resolve, reject) => {
+        let timeoutId = setTimeout(resolve, timeout);
+        save(timeoutId);
+        // cleanup
+        setTimeout(reject, timeout + 100)
       });
-    });
+    }, sid: "timeout"});
   
-    const cleanupFx = createEffect(() => {
-      clearTimeout(timeoutId);
-    });
+    const cleanupFx = attach({
+      source: $timeoutId,
+      effect: clearTimeout,
+    })
   
     guard({
       clock: start,

@@ -16,9 +16,8 @@ const safeGame = async (config: {A: [string, User]; B: [string, User];}) => {
         teamB: safeB.run as any,
     })
     const startedAt = `${Date.now()}`;
-    game.run();
+    await game.run();
 
-    await new Promise(r => setTimeout(() => r(0), 1000));
     const log = game.scope.getState(GameModel.$log);
     const winner = game.scope.getState(GameModel.$winner);
     const playerA = config.A[1].name;
@@ -92,6 +91,7 @@ const start = async () => {
         }
         
     })
+    console.log(stats);
 
     for (let i = 0; i < games.length; i++) {
         const game = games[i];
