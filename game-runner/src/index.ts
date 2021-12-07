@@ -1,6 +1,6 @@
 require('dotenv').config()
 import {createSafeRunner} from "./safe-box";
-import {getUsers, saveGame, savePoints, User} from "./db";
+import {getUsers, saveGame, savePoints, saveStats, User} from "./db";
 import { createGame } from './model/run';
 import { GameModel } from './model/game';
 import { nanoid } from "nanoid/non-secure";
@@ -25,18 +25,20 @@ const safeGame = async (config: {A: [string, User]; B: [string, User];}) => {
     const playerAId = config.A[0];
     const playerB = config.B[1].name;
     const playerBId = config.B[0];
-    safeA.dispose()
-    safeB.dispose()
 
     return {
         gameId: nanoid(),
         startedAt,
         log: JSON.stringify(log),
-        winner,
-        playerA,
-        playerAId,
-        playerB,
-        playerBId,
+        winner: winner as "a" | "b" | "tie",
+        a: {
+            name: playerA,
+            id: playerAId,
+        },
+        b: {
+            name: playerB,
+            id: playerBId,
+        }
     }
 } 
 
@@ -57,18 +59,52 @@ const start = async () => {
         }
     }
 
+    const stats: Record<string, {name: string; wins: number; loss: number; tie: number;}> = {}
+    games.forEach(game => {
+        if (game.winner === "tie") {
+            const a = stats[game.a.id] ?? {name: game.a.name, wins: 0, loss: 0, tie: 0}
+            stats[game.a.id] = {
+                ...a,
+                tie: a.tie + 1
+            }
+
+            const b = stats[game.b.id] ?? {name: game.b.name, wins: 0, loss: 0, tie: 0}
+            stats[game.b.id] = {
+                ...b,
+                tie: b.tie + 1
+            }
+
+            return;
+        };
+        const winner = game[game.winner];
+        const loser = game.winner === "a" ? game.b : game.a;
+
+        const w = stats[winner.id] ?? {name: winner.name, wins: 0, loss: 0, tie: 0};
+        stats[winner.id] = {
+            ...w,
+            wins: w.wins + 1
+        }
+
+        const l = stats[loser.id] ?? {name: loser.name, wins: 0, loss: 0, tie: 0};
+        stats[loser.id] = {
+            ...l,
+            loss: l.loss + 1,
+        }
+        
+    })
+
     for (let i = 0; i < games.length; i++) {
         const game = games[i];
         const pointsA = {
             win: game.winner === "a",
-            userId: game.playerAId,
-            userName: game.playerA,
+            userId: game.a.id,
+            userName: game.a.name,
             gameId: game.gameId,
         };
         const pointsB = {
             win: game.winner === "b",
-            userId: game.playerBId,
-            userName: game.playerB,
+            userId: game.b.id,
+            userName: game.b.name,
             gameId: game.gameId,
         }
 
@@ -76,6 +112,7 @@ const start = async () => {
         await savePoints(pointsA);
         await savePoints(pointsB);
     }
+    await saveStats({ day: 2, stats })
 };
 
 start()
