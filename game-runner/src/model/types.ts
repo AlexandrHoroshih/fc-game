@@ -54,8 +54,10 @@ export type GameState = {
     inGunRange: (me: Bot, target: Bot) => boolean;
     getDistance: (me: Bot, target: Bot) => number;
     findClosest: (me: Bot, targets: Bot[]) => Bot;
+    getRot: (dir: Dir, angle: number) => Dir;
   };
   meta: {
     field: GameSize;
-  }
+  },
+  useStash: <T = any>(init: T) => readonly [T, (next: T) => void]
 }

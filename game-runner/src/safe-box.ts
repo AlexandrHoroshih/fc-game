@@ -88,6 +88,23 @@ const libInGunRange = (shooter, dir, target) => {
     return { inRange, range };
 };
   stash = stash || {}
+
+  const createHook = () => {
+    let i = 0;
+  
+    const useStash = (init) => {
+      const local = i;
+      stash[local] = stash[local] ?? init;
+  
+      const setStash = (v) => {
+        stash[local] = v
+      }
+      i++;
+      return [stash[local], setStash];
+    }
+  
+    return useStash;
+  }
   const botLib = {
     getDistance: (l, r) => Math.sqrt((l.position.x - r.position.x) ** 2 + (l.position.y - r.position.y) ** 2),
     getDir: (me, bot) => {
@@ -125,13 +142,28 @@ const libInGunRange = (shooter, dir, target) => {
     inGunRange: (me, target) => {
         return libInGunRange(me.position, me.viewDir, target.position).inRange;
     },
+    getRot: (dir, angle) => {
+        const dirs = ["n", "ne", "e", "se", "s", "sw", "w", "nw"];
+        const dirIndex = dirs.findIndex((d) => d === dir);
+        let nextIndex = dirIndex + angle;
+    
+        while (nextIndex > dirs.length) {
+          nextIndex = nextIndex - dirs.length;
+         }
+    
+        if (nextIndex < 0) {
+          nextIndex = dirs.length + nextIndex;
+        }
+    
+        return dirs[nextIndex];
+      },
 };
 
    const state = JSON.parse($0);
    const move = (game) => {
     ${code}
    }
-   const result = move({...state, stash: stash, lib: botLib, meta: { field: { w: 10, h: 10 }}});
+   const result = move({...state, stash: stash, lib: botLib, useStash: createHook(), meta: { field: { w: 10, h: 10 }}});
 
    return JSON.stringify(result);
   `;
