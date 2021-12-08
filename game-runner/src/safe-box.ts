@@ -178,6 +178,7 @@ const libInGunRange = (shooter, dir, target) => {
         );
         return JSON.parse(nextMove);
       } catch (error) {
+        console.log(code.slice(0, 10))
         console.log(error)
       }
     },
