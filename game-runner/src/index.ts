@@ -113,7 +113,7 @@ const start = async () => {
         await savePoints(pointsA);
         await savePoints(pointsB);
     }
-    await saveStats({ day: 2, stats })
+    await saveStats({ day: 3, stats })
 };
 
 start()
