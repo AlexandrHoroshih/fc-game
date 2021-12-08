@@ -91,6 +91,7 @@ const start = async () => {
         }
         
     })
+    console.log(games);
     console.log(stats);
 
     for (let i = 0; i < games.length; i++) {
